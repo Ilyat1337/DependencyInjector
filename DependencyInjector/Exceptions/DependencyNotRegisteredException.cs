@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace DependencyInjector
+namespace DependencyInjector.Exceptions
 {
     public class DependencyNotRegisteredException : Exception
     {

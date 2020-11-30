@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DependencyInjector.Exceptions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -76,7 +77,7 @@ namespace DependencyInjector
             else
             {
                 List<RegisteredDependencyInfo> dependencyInfos = RegisteredDependencies[dependency];
-                ValidateImplementationDuplication(dependencyInfos, implementation);
+                ValidateImplementationDuplication(dependencyInfos, implementation, dependencyInfo.Name);
                 dependencyInfos.Add(dependencyInfo);
             }
         }
@@ -89,9 +90,14 @@ namespace DependencyInjector
             }
         }
 
-        private void ValidateImplementationDuplication(List<RegisteredDependencyInfo> dependencyInfos, Type implementation)
+        private void ValidateImplementationDuplication(List<RegisteredDependencyInfo> dependencyInfos, Type implementation, object implementationName)
         {
-            if (dependencyInfos.Select(dependency => dependency.ImplementationType).Any(type => type.Equals(implementation)))
+            if (dependencyInfos.Select(dependency => dependency.ImplementationType).Any(type => type.Equals(implementation))
+                || (implementation.Name != null && 
+                dependencyInfos.Select(dependency => dependency.Name)
+                .Where(name => name != null)
+                .Any(name => name.Equals(implementationName)))
+                )
             {
                 throw new ConfigurationException(string.Format(IMPL_ALREADY_REGISTERED_MESSAGE_FORMAT, implementation.Name));
             }
@@ -107,7 +113,7 @@ namespace DependencyInjector
 
         private bool ContainsSuitableConstructor(Type implementationType)
         {
-            ConstructorInfo suitableConstructor = implementationType.GetConstructors().
+            ConstructorInfo suitableConstructor = implementationType.GetConstructors(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).
                         OrderBy(constructor => constructor.GetParameters().Length).First();
             return suitableConstructor.GetParameters().All(parameter => 
                     parameter.ParameterType.IsInterface || parameter.ParameterType.IsClass);

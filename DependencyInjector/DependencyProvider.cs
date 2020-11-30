@@ -1,4 +1,5 @@
-﻿using DependencyInjector.Providers;
+﻿using DependencyInjector.Exceptions;
+using DependencyInjector.Providers;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -22,8 +23,6 @@ namespace DependencyInjector
         {
             foreach (List<RegisteredDependencyInfo> dependencyInfos in dependencies.RegisteredDependencies.Values)
             {
-
-
                 foreach (RegisteredDependencyInfo dependencyInfo in dependencyInfos)
                 {
                     if (dependencyInfo.DependencyType.IsGenericTypeDefinition)
@@ -64,7 +63,8 @@ namespace DependencyInjector
 
             if (provider != null)
             {
-                implementationDatas.Add(new ImplementationData(provider, dependencyInfo.Name, dependencyInfo.DependencyType));
+                implementationDatas.Add(new ImplementationData(provider,  dependencyInfo.DependencyType, 
+                    dependencyInfo.ImplementationType, dependencyInfo.Name));
             }
         }
 
@@ -100,7 +100,10 @@ namespace DependencyInjector
                     isEnumerable = true;
                 }
 
-                ProcessOpenGenericType(dependencyType, implementationName);
+                if (dependencyType.IsGenericType && !dependencyToImplementations.ContainsKey(dependencyType))
+                {
+                    ProcessOpenGenericType(dependencyType, implementationName);
+                }
             }
 
             if (!dependencyToImplementations.ContainsKey(dependencyType))
@@ -152,11 +155,12 @@ namespace DependencyInjector
             }
         }
 
-        private RegisteredDependencyInfo CreateOpenGenericInfoCopy(RegisteredDependencyInfo dependencyInfo, Type type)
+        private RegisteredDependencyInfo CreateOpenGenericInfoCopy(RegisteredDependencyInfo dependencyInfo, 
+                                    Type genericDependencyType)
         {
             return new RegisteredDependencyInfo(
-                dependencyInfo.DependencyType.MakeGenericType(type),
-                dependencyInfo.ImplementationType.MakeGenericType(type),
+                dependencyInfo.DependencyType.MakeGenericType(genericDependencyType),
+                dependencyInfo.ImplementationType.MakeGenericType(genericDependencyType),
                 dependencyInfo.Lifetime,
                 dependencyInfo.Name
             );
@@ -175,41 +179,50 @@ namespace DependencyInjector
 
         private object GetRequiredImplementation(List<ImplementationData> implementationDatas, object? implementationName, Type dependencyType)
         {
-            IImplementationProvider provider;
+            ImplementationData implementationData = GetImplementationData(implementationDatas, implementationName, dependencyType);
+            return implementationData.Provider.ProvideImplementation();
+        }
+
+        private ImplementationData GetImplementationData(List<ImplementationData> implementationDatas, object? implementationName, Type dependencyType)
+        {
+            ImplementationData implementationData;
             if (implementationName == null)
             {
-                provider = implementationDatas[0].Provider;
+                implementationData = implementationDatas[0];
             }
             else
             {
-                ImplementationData implementationData = implementationDatas.Find(implementationData =>
+                implementationData = implementationDatas.Find(implementationData =>
                     implementationData.Name != null && implementationData.Name.Equals(implementationName));
                 if (implementationData == null)
                 {
                     throw new DependencyNotRegisteredException(dependencyType, implementationName);
                 }
-                provider = implementationData.Provider;
             }
-            return provider.ProvideImplementation();
+            return implementationData;
         }
     }
 
     class ImplementationData
-    { 
+    {
         public IImplementationProvider Provider
-        { get; }
-
-        public object? Name
         { get; }
 
         public Type DependencyType
         { get; }
 
-        public ImplementationData(IImplementationProvider provider, object? name, Type dependencyType)
+        public Type ImplementationType
+        { get; }
+
+        public object? Name
+        { get; }
+
+        public ImplementationData(IImplementationProvider provider, Type dependencyType, Type implementationType, object? name)
         {
             Provider = provider;
-            Name = name;
             DependencyType = dependencyType;
+            ImplementationType = implementationType;
+            Name = name;
         }
     }
 }

@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace DependencyInjector
+namespace DependencyInjector.Exceptions
 {
-    class ConfigurationException : Exception
+    public class ConfigurationException : Exception
     {
         private readonly string message;
 

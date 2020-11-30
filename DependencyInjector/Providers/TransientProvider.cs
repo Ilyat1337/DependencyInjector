@@ -15,7 +15,8 @@ namespace DependencyInjector.Providers
             this.dependencyProvider = dependencyProvider;
             this.implementationType = implementationType;
 
-            suitableConstructor = SelectLowestParamsCountConstructor(implementationType.GetConstructors());
+            suitableConstructor = SelectLowestParamsCountConstructor(
+                implementationType.GetConstructors(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance));
         }
 
         private ConstructorInfo SelectLowestParamsCountConstructor(ConstructorInfo[] constructorInfos)
